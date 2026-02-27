@@ -1,0 +1,40 @@
+services:
+  analyzer:
+    build: .
+    image: ai-doc-intelligence:1.0.0
+    container_name: ai-intelligence
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      - DEBUG=false
+      - ALLOWED_ORIGINS=*
+      - HF_TOKEN=${HF_TOKEN:-}
+      - RAG_TOP_K=8
+      - RAG_TOP_RERANK=4
+      - RAG_HOP_LIMIT=2
+      - RAG_HOP_THRESHOLD=0.45
+      - RAG_QA_BATCH_SIZE=4
+
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 3 --log-level info
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    volumes:
+      - ./hf_cache:/root/.cache/huggingface
+      - ./app:/app/app

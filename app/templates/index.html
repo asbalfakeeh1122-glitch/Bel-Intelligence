@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bel Intelligence</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+</head>
+
+<body>
+    <div class="mesh-bg"></div>
+
+    <div class="container">
+        <header>
+            <h1>Bel Intelligence</h1>
+            <p>A production-grade neural engine for high-precision document analysis and semantic reasoning.</p>
+        </header>
+
+        <main>
+            <!-- STICKY INPUT -->
+            <div class="focus-card">
+                <div id="upload-zone" class="upload-zone" style="margin-bottom: 2rem;">
+                    <i data-lucide="upload-cloud" style="color: var(--brand-primary); margin-bottom: 0.5rem;"></i><br>
+                    <span>Drop PDF, DOCX, or HTML to analyze, or paste below</span>
+                    <input type="file" id="file-input" style="display: none;" accept=".pdf,.docx,.html,.txt">
+                </div>
+
+                <textarea id="text-input" placeholder="Paste your document here for elite processing..."></textarea>
+                <div id="char-info"
+                    style="text-align: right; font-size: 0.75rem; color: rgba(255,255,255,0.3); margin-top: 0.5rem;">0 /
+                    50,000</div>
+
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                    <button id="analyze-btn" class="action-btn">
+                        <span>Execute Analysis</span>
+                        <i data-lucide="zap" width="20"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- EXPERT RESULTS (Hidden by default) -->
+            <div id="results-view" style="display: none;">
+
+                <div class="results-grid">
+                    <!-- DOMAIN ANALYSIS -->
+                    <div class="result-card full-width expert-header">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div class="label-tiny">Expert Domain Classification</div>
+                                <h2 id="res-primary-domain" style="font-size: 2.5rem; margin: 0.5rem 0; color: #fff;">-
+                                </h2>
+                                <div id="res-secondary-domains" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="label-tiny">Intent Lock</div>
+                                <div id="res-intent" class="intent-badge">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- REASONING & EVIDENCE -->
+                    <div class="result-card">
+                        <div class="label-tiny">Audit Reasoning</div>
+                        <p id="res-reasoning"
+                            style="font-size: 0.9rem; line-height: 1.6; color: rgba(255,255,255,0.7);">-</p>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="label-tiny">Excluded Segments</div>
+                        <div id="res-excluded" style="font-size: 0.85rem; color: #ef4444; opacity: 0.8;">-</div>
+                    </div>
+
+                    <!-- NUMERICAL INSIGHTS -->
+                    <div id="numerical-section" class="result-card full-width" style="display: none;">
+                        <div class="label-tiny">Quantitative Reasoning</div>
+                        <div id="insight-grid" class="insight-grid">
+                            <!-- Dynamic Insights -->
+                        </div>
+                    </div>
+
+                    <!-- VERBATIM EVIDENCE -->
+                    <div class="result-card full-width">
+                        <div class="label-tiny">Verbatim Neural Evidence</div>
+                        <div id="res-evidence-quotes" class="evidence-list-pro">
+                            <!-- Dynamic Evidence -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ELITE CHAT -->
+                <div class="chat-container-elite">
+                    <div class="chat-header">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 10px; height: 10px; background: #22c55e; border-radius: 50%;"></div>
+                            <span style="font-weight: 700; letter-spacing: -0.02em;">Semantic Reasoning Agent</span>
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">GPT-4 & Streaming Enabled</span>
+                    </div>
+                    <div class="chat-messages" id="chat-history">
+                        <div class="chat-msg ai">Context processed successfully. I am now capable of quantitative
+                            insights and incremental reasoning. How can I assist?</div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" class="input-glow"
+                            placeholder="Ask a complex question about the text...">
+                        <button id="btn-send" class="action-btn">Send</button>
+                    </div>
+                </div> <!-- End chat-container-elite -->
+            </div> <!-- End results-view -->
+        </main>
+    </div> <!-- End container -->
+
+    <!-- STATUS HUB -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="dot-pulse"></div>
+        <span id="load-status">Synthesizing Neural Evidence...</span>
+    </div>
+
+    <script>
+        const textarea = document.getElementById('text-input');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const resultsView = document.getElementById('results-view');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const tagContainer = document.getElementById('tag-container');
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const insightGrid = document.getElementById('insight-grid');
+        const numericalSection = document.getElementById('numerical-section');
+
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
+        const chatHistory = document.getElementById('chat-history');
+
+        let currentResult = null;
+
+        // --- Category Management (all domains always active) ---
+        const ALL_CATEGORIES = [
+            'Business', 'Technology', 'Legal', 'Finance',
+            'Policy', 'Healthcare', 'Security', 'Environment', 'Science'
+        ];
+
+        function safeCreateIcons() {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+        safeCreateIcons();
+
+        // --- File Upload ---
+        uploadZone.onclick = () => fileInput.click();
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            analyzeBtn.disabled = true;
+            document.getElementById('load-status').textContent = `Extracting from ${file.name}...`;
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    textarea.value = data.text;
+                    textarea.dispatchEvent(new Event('input'));
+                    // Auto-trigger analysis
+                    analyzeBtn.click();
+                } else {
+                    alert('Upload failed: ' + data.detail);
+                }
+            } catch (err) {
+                alert('Connection error: ' + err.message);
+            } finally {
+                loadingOverlay.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        };
+
+        textarea.addEventListener('input', () => {
+            const len = textarea.value.length;
+            document.getElementById('char-info').textContent = `${len.toLocaleString()} / 50,000`;
+            if (len > 50000) {
+                document.getElementById('char-info').style.color = '#ef4444';
+            } else {
+                document.getElementById('char-info').style.color = 'rgba(255,255,255,0.3)';
+            }
+        });
+
+        // --- Rendering ---
+        function renderNumericalInsights(insights) {
+            if (!insights || insights.length === 0) {
+                numericalSection.style.display = 'none';
+                return;
+            }
+            numericalSection.style.display = 'block';
+            insightGrid.innerHTML = '';
+            insights.forEach(ins => {
+                const card = document.createElement('div');
+                card.className = 'insight-card';
+                card.innerHTML = `
+                    <div class="insight-value">${ins.value}</div>
+                    <div class="insight-context">${ins.context}</div>
+                    <div style="font-size: 0.6rem; margin-top: 0.5rem; opacity: 0.3;">Conf: ${Math.round(ins.confidence * 100)}%</div>
+                `;
+                insightGrid.appendChild(card);
+            });
+        }
+
+        function renderExpertExclusions(excluded) {
+            const el = document.getElementById('res-excluded');
+            if (!excluded || excluded.length === 0) {
+                el.textContent = "None identified.";
+                return;
+            }
+            el.innerHTML = excluded.map(ex => `<div class="tag-pill-mini">× ${ex}</div>`).join('');
+        }
+
+        function renderExpertEvidence(quotes) {
+            const el = document.getElementById('res-evidence-quotes');
+            el.innerHTML = '';
+            if (!quotes || quotes.length === 0) {
+                el.innerHTML = '<div style="opacity: 0.5;">Generating structural evidence...</div>';
+                return;
+            }
+            quotes.forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'evidence-pro-item';
+                item.innerHTML = `
+                    <i data-lucide="check-circle" width="16" style="color: #22c55e; margin-top: 0.2rem;"></i>
+                    <div class="quote-text">"${q}"</div>
+                `;
+                el.appendChild(item);
+            });
+            safeCreateIcons();
+        }
+
+        window.toggleEvidence = (idx) => {
+            const el = document.getElementById(`ev-content-${idx}`);
+            el.classList.toggle('visible');
+        };
+
+        // --- Analysis ---
+        analyzeBtn.addEventListener('click', async () => {
+            const text = textarea.value;
+            const categories = ALL_CATEGORIES;
+
+            if (text.length < 100) {
+                alert('Document too short for elite analysis.');
+                return;
+            }
+
+            loadingOverlay.style.display = 'flex';
+            analyzeBtn.disabled = true;
+            resultsView.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, categories })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+
+                    document.getElementById('res-intent').textContent = data.intent;
+                    document.getElementById('res-primary-domain').textContent = data.primary_domain;
+                    document.getElementById('res-reasoning').textContent = data.reasoning;
+
+                    const secondaryEl = document.getElementById('res-secondary-domains');
+                    secondaryEl.innerHTML = data.secondary_domains.map(sd => `<span class="tag-pill-mini">${sd}</span>`).join('');
+
+                    renderExpertExclusions(data.excluded_domains);
+                    renderExpertEvidence(data.evidence_quotes);
+                    renderNumericalInsights(data.numerical_insights);
+
+                    resultsView.style.display = 'block';
+
+                    setTimeout(() => {
+                        resultsView.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                } else {
+                    const error = await res.json();
+                    alert('Error: ' + error.detail);
+                }
+            } catch (e) {
+                alert('System error: ' + e.message);
+            } finally {
+                loadingOverlay.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        // --- Incremental Streaming Chat ---
+        btnSend.addEventListener('click', async () => {
+            const question = chatInput.value.trim();
+            const context = textarea.value;
+            if (!question || !context) return;
+
+            chatHistory.innerHTML += `<div class="chat-msg user">${question}</div>`;
+            chatInput.value = '';
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            const thinkingId = 'think-' + Date.now();
+            chatHistory.innerHTML += `<div class="chat-msg ai" id="${thinkingId}" style="opacity: 0.5;">Synthesizing response...</div>`;
+
+            try {
+                const response = await fetch('/api/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ context, question })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                const aiMsgId = 'ai-' + Date.now();
+                let fullAnswer = "";
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Remaining partial line
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            const data = JSON.parse(line);
+
+                            if (data.status === "analyzing_intent") {
+                                document.getElementById(thinkingId).textContent = `Analyzing intent: ${data.intent}...`;
+                            } else if (data.chunk) {
+                                if (!document.getElementById(aiMsgId)) {
+                                    const thinkingEl = document.getElementById(thinkingId);
+                                    if (thinkingEl) thinkingEl.remove();
+                                    chatHistory.innerHTML += `<div class="chat-msg ai" id="${aiMsgId}"></div>`;
+                                }
+                                fullAnswer = data.chunk;
+                                document.getElementById(aiMsgId).textContent = fullAnswer + "...";
+                            } else if (data.intent) {
+                                // Expert Protocol Final result
+                                const thinkingEl = document.getElementById(thinkingId);
+                                if (thinkingEl) thinkingEl.remove();
+
+                                if (!document.getElementById(aiMsgId)) {
+                                    chatHistory.innerHTML += `<div class="chat-msg ai" id="${aiMsgId}"></div>`;
+                                }
+                                const aiEl = document.getElementById(aiMsgId);
+
+                                if (data.intent === "ANALOGY") {
+                                    aiEl.innerHTML = `
+                                        <div class="analogy-box">
+                                            <div class="label-tiny">Structural Analogy</div>
+                                            <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">${data.function}</div>
+                                            <p style="font-size: 0.9rem; opacity: 0.8;">${data.reasoning}</p>
+                                        </div>
+                                    `;
+                                } else if (data.intent === "EVALUATION") {
+                                    aiEl.innerHTML = `
+                                        <div class="evaluation-box">
+                                            <div class="label-tiny">Expert Evaluation</div>
+                                            <p style="margin-bottom: 1rem;">${data.conclusion}</p>
+                                            <div style="font-size: 0.75rem; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
+                                                <strong>Evidence:</strong> ${data.evidence}<br>
+                                                <strong>Limitations:</strong> ${data.limitations}
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    aiEl.innerHTML = `
+                                        ${data.answer}
+                                        <div style="font-size: 0.75rem; color: var(--brand-secondary); margin-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem;">
+                                            <strong>Precision Evidence:</strong> ${data.evidence}
+                                        </div>
+                                    `;
+                                }
+                            }
+                            chatHistory.scrollTop = chatHistory.scrollHeight;
+                        } catch (parseError) {
+                            console.warn("Partial JSON or parse error:", parseError, line);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                const thinkingEl = document.getElementById(thinkingId);
+                if (thinkingEl) thinkingEl.remove();
+                chatHistory.innerHTML += `<div class="chat-msg ai" style="color: var(--status-low);">Inference stream interrupted.</div>`;
+            }
+        });
+
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') btnSend.click(); });
+    </script>
+</body>
+
+</html>

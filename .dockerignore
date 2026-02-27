@@ -1,0 +1,33 @@
+# Version control
+.git
+.gitignore
+
+# Python bytecode & cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+
+# Dev environments
+venv/
+.venv/
+.vscode/
+.idea/
+
+# Test outputs & benchmark logs
+tools/*.txt
+tools/*.log
+*.jsonl
+monitoring.jsonl
+feedback.jsonl
+test_results.log
+
+# Docs & meta
+docs/
+README.md
+Dockerfile
+docker-compose.yml
+
+# HuggingFace local cache (mounted as volume in compose)
+hf_cache/
