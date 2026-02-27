@@ -12,7 +12,7 @@ pinned: false
 
 > **⚠️ NOTE: This project is currently a Work In Progress (WIP).** Features and documentation are actively being updated.
 
-[![Live Demo](https://img.shields.io/badge/Live_Website-Click_Here-success?style=for-the-badge)](https://your-live-website-url-here.com)
+[![Live Demo](https://img.shields.io/badge/Live_Website-Click_Here-success?style=for-the-badge)](https://huggingface.co/spaces/Ashbal1212/Bel-Intelligence)
 
 ![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active-brightgreen)
 ![Build: Passing](https://img.shields.io/badge/Build-Passing-blue)
